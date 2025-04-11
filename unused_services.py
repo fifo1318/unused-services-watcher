@@ -2,7 +2,6 @@
 import subprocess
 
 def get_services():
-    # Získaj všetky služby
     cmd = ["systemctl", "list-units", "--type=service", "--all", "--no-pager", "--no-legend"]
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result.stdout.strip().split("\n")
@@ -15,18 +14,32 @@ def analyze_services(services):
             continue
 
         name = parts[0]
-        load = parts[1]
         active = parts[2]
         sub = parts[3]
 
-        # Podmienka: služba nie je aktívna
         if active != "active":
             unused.append((name, active, sub))
 
     return unused
 
+def ask_action(service_name):
+    print(f"\n❔ Čo chceš urobiť so službou `{service_name}`?")
+    print("   [s] Stop (zastaviť)")
+    print("   [d] Disable (zakázať)")
+    print("   [n] Nič")
+    choice = input("   Voľba (s/d/n): ").lower().strip()
+
+    if choice == "s":
+        subprocess.run(["sudo", "systemctl", "stop", service_name])
+        print(f"⛔ Služba `{service_name}` bola zastavená.")
+    elif choice == "d":
+        subprocess.run(["sudo", "systemctl", "disable", service_name])
+        print(f"🚫 Služba `{service_name}` bola zakázaná.")
+    else:
+        print("↩️ Preskočené.")
+
 def main():
-    print("🔍 Hľadám nepoužívané alebo neaktívne služby...\n")
+    print("🔍 Hľadám neaktívne alebo zakázané služby...\n")
     services = get_services()
     unused = analyze_services(services)
 
@@ -34,6 +47,9 @@ def main():
         print("🔻 Neaktívne alebo zakázané služby:")
         for name, active, sub in unused:
             print(f"  - {name} | Stav: {active} ({sub})")
+
+        for name, _, _ in unused:
+            ask_action(name)
     else:
         print("✅ Všetky služby sú aktívne.")
 
